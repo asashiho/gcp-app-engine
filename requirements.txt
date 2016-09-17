@@ -1,0 +1,6 @@
+Flask==0.10
+WTForms-Appengine==0.1
+arrow==0.8.0
+Flask_WTF==0.12
+google-api-python-client
+GoogleAppEngineCloudStorageClient
