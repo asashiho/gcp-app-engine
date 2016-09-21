@@ -3,7 +3,7 @@
 from flask import Flask, render_template, request, redirect, url_for
 from flask import escape, Markup
 from wtforms import Form, TextAreaField, StringField, validators, ValidationError
-import arrow
+from pytz import timezone, utc
 from google.appengine.ext import ndb
 from flask_wtf.file import FileField
 from werkzeug.utils import secure_filename
@@ -17,19 +17,23 @@ bucket_name = os.environ.get('BUCKET_NAME', get_default_gcs_bucket_name())
 storage_path = 'https://storage.cloud.google.com/%s' % bucket_name
 
 class Message(ndb.Model):
-    sort_key = ndb.DateTimeProperty(auto_now_add=True)
-    timestamp = ndb.StringProperty(required=True)
+    timestamp = ndb.DateTimeProperty(auto_now_add=True)
     name = ndb.StringProperty(required=True)
     message = ndb.StringProperty(required=True)
     filename = ndb.StringProperty(required=False)
 
     @classmethod
     def last_messages(cls):
-        return cls.query().order(-cls.sort_key)
+        return cls.query().order(-cls.timestamp)
 
 @app.template_filter('add_br')
 def linesep_to_br_filter(s):
     return escape(s).replace('\n', Markup('<br>'))
+
+@app.template_filter('local_tz')
+def local_tz_filter(timestamp):
+    jst = timezone('Asia/Tokyo')
+    return utc.localize(timestamp).astimezone(jst).strftime("%Y/%m/%d %H:%M:%S")
 
 def is_image():
     def _is_image(form, field):
@@ -63,7 +67,6 @@ def messages():
 def post():
     form = MessageForm(CombinedMultiDict((request.files, request.form)))
     if request.method == 'POST' and form.validate():
-        timestamp = arrow.utcnow().to('Asia/Tokyo').format('YYYY/MM/DD HH:mm:ss')
         name = request.form['input_name']
         message = request.form['input_message']
         if form.input_photo.data.filename:
@@ -80,13 +83,10 @@ def post():
             for _ in form.input_photo.data.stream:
                 gcs_file.write(_)
             gcs_file.close()
-            entry = Message(name=name, message=message,
-                            filename=filename, timestamp=timestamp)
-            entry.put()
+            entry = Message(name=name, message=message, filename=filename)
         else:
-            entry = Message(name=name, message=message,
-                            filename=None, timestamp=timestamp)
-            entry.put()
-        return render_template('post.html', name=name, timestamp=timestamp)
+            entry = Message(name=name, message=message, filename=None)
+        entry.put()
+        return render_template('post.html', name=name, timestamp=entry.timestamp)
     else:
         return redirect(url_for('messages'))

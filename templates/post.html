@@ -5,7 +5,7 @@
   </head>
   <body>
 </p>
-<div>{{ timestamp }}</div>
+<div>{{ timestamp | local_tz }}</div>
 <div>{{ name }} さんからのメッセージを受け取りました。</div>
 </p>
 <form action={{ url_for('messages') }}>
