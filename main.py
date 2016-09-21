@@ -33,7 +33,8 @@ def linesep_to_br_filter(s):
 @app.template_filter('local_tz')
 def local_tz_filter(timestamp):
     jst = timezone('Asia/Tokyo')
-    return utc.localize(timestamp).astimezone(jst).strftime("%Y/%m/%d %H:%M:%S")
+    jst_timestamp = utc.localize(timestamp).astimezone(jst)
+    return jst_timestamp.strftime("%Y/%m/%d %H:%M:%S")
 
 def is_image():
     def _is_image(form, field):
