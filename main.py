@@ -24,8 +24,8 @@ class Message(ndb.Model):
     filename = ndb.StringProperty(required=False)
 
     @classmethod
-    def last_messages(cls, ancestor_key):
-        return cls.query(ancestor=ancestor_key).order(-cls.sort_key)
+    def last_messages(cls):
+        return cls.query().order(-cls.sort_key)
 
 @app.template_filter('add_br')
 def linesep_to_br_filter(s):
@@ -53,8 +53,7 @@ def index():
 @app.route('/messages')
 def messages():
     form = MessageForm(request.form)
-    ancestor_key = ndb.Key('Dengonban', 'default')
-    last_messages = Message.last_messages(ancestor_key).fetch(5)
+    last_messages = Message.last_messages().fetch(5)
     last_messages = [message for message in last_messages]
     last_messages.reverse()
     return render_template('messages.html', storage_path=storage_path,
@@ -81,13 +80,11 @@ def post():
             for _ in form.input_photo.data.stream:
                 gcs_file.write(_)
             gcs_file.close()
-            entry = Message(parent=ndb.Key('Dengonban', 'default'),
-                            name=name, message=message,
+            entry = Message(name=name, message=message,
                             filename=filename, timestamp=timestamp)
             entry.put()
         else:
-            entry = Message(parent=ndb.Key('Dengonban', 'default'),
-                            name=name, message=message,
+            entry = Message(name=name, message=message,
                             filename=None, timestamp=timestamp)
             entry.put()
         return render_template('post.html', name=name, timestamp=timestamp)
